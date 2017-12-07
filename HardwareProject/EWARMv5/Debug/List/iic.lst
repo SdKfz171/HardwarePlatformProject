@@ -1,0 +1,209 @@
+###############################################################################
+#
+# IAR ANSI C/C++ Compiler V8.20.1.14183/W32 for ARM       07/Dec/2017  15:20:34
+# Copyright 1999-2017 IAR Systems AB.
+#
+#    Cpu mode     =  thumb
+#    Endian       =  little
+#    Source file  =  C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\iic.c
+#    Command line =  
+#        -f C:\Users\DELL\AppData\Local\Temp\EWC019.tmp
+#        (C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\iic.c -D
+#        VECT_TAB_FLASH -lcN
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\Debug\List
+#        -o
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\Debug\Obj
+#        --debug --endian=little --cpu=Cortex-M3 -e --fpu=None --dlib_config
+#        "C:\Program Files (x86)\IAR Systems\Embedded Workbench
+#        8.0_2\arm\INC\c\DLib_Config_Full.h" -I
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\..\ -I
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\..\..\ -I
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\..\..\FWLib\library\inc\
+#        -Ohs --use_c++_inline --require_prototypes)
+#    Locale       =  C
+#    List file    =  
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\Debug\List\iic.lst
+#    Object file  =  
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\Debug\Obj\iic.o
+#
+###############################################################################
+
+C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\iic.c
+      1          #include "stm32f10x_lib.h"
+      2          #include "iic.h"
+      3          
+      4          
+      5          void IIC_delay_us(u16 num)
+      6          {
+      7          	u8 i,j;
+      8          
+      9          	for(i=0;i<num;i++)
+     10          		for(j=0;j<20;j++);
+     11          }
+     12          
+     13          void IIC1_Start(void)
+     14          {     
+     15          	IIC1_SDA_HIGH();
+     16          	IIC1_SCL_HIGH();
+     17          	IIC_delay_us(4);
+     18          	IIC1_SDA_LOW();
+     19          	IIC_delay_us(4);
+     20          	IIC1_SCL_LOW();            
+     21          }
+     22          
+     23          void IIC1_Stop(void)
+     24          {     
+     25          	IIC1_SCL_LOW();
+     26          	IIC1_SDA_LOW();
+     27          	IIC_delay_us(4);
+     28          	IIC1_SCL_HIGH();
+     29          	IIC1_SDA_HIGH();
+     30          	IIC_delay_us(4);
+     31          }
+     32          
+     33          u8 IIC1_Wait_Ack(void)
+     34          {     
+     35          	u16 ucErrTime=0;
+     36          	
+     37          	IIC1_SDA_HIGH();
+     38          	IIC_delay_us(1);
+     39          	IIC1_SCL_HIGH();
+     40          	IIC_delay_us(1);
+     41          
+     42          	while(IIC1_READ_DATA)
+     43          	{
+     44          		ucErrTime++;
+     45          		if(ucErrTime>2500)
+     46          		{
+     47          			IIC1_Stop();
+     48          			return 1;
+     49          		}     
+     50          	}
+     51          
+     52          	IIC1_SCL_LOW();
+     53          
+     54          	return 0;
+     55          }
+     56          
+     57          void IIC1_Ack(void)
+     58          {     
+     59          	IIC1_SCL_LOW();
+     60          	IIC1_SDA_LOW();
+     61          	IIC_delay_us(2);
+     62          	IIC1_SCL_HIGH();
+     63          	IIC_delay_us(2);
+     64          	IIC1_SCL_LOW(); 
+     65          }
+     66          
+     67          void IIC1_NAck(void)
+     68          {     
+     69          	IIC1_SCL_LOW();
+     70          	IIC1_SDA_HIGH();
+     71          	IIC_delay_us(2);
+     72          	IIC1_SCL_HIGH();
+     73          	IIC_delay_us(2);
+     74          	IIC1_SCL_LOW();
+     75          }
+     76          
+     77          void IIC1_Send_Byte(u8 txd)
+     78          {     
+     79          	u8 t;
+     80          
+     81          	IIC1_SCL_LOW();
+     82          
+     83          	for(t=0;t<8;t++)
+     84          	{
+     85          		if(txd&0x80)
+     86          			IIC1_SDA_HIGH();
+     87          		else
+     88          			IIC1_SDA_LOW();
+     89          
+     90          		txd<<=1;
+     91          		IIC_delay_us(2);
+     92          		IIC1_SCL_HIGH();
+     93          		IIC_delay_us(2);
+     94          		IIC1_SCL_LOW();
+     95          		IIC_delay_us(2);
+     96          	}
+     97          }
+     98          
+     99          u8 IIC1_Read_Byte(unsigned char ack)
+    100          {      
+    101          	unsigned char i,receive = 0;
+    102          	for(i=0;i<8;i++)
+    103          	{
+    104          		IIC1_SCL_LOW();
+    105          		IIC_delay_us(2);
+    106          		IIC1_SCL_HIGH();
+    107          		receive<<=1;
+    108          
+    109          		if(IIC1_READ_DATA)receive++;
+    110          
+    111          		IIC_delay_us(1);
+    112          	}
+    113          
+    114          	if(!ack)
+    115          		IIC1_NAck();
+    116          	else
+    117          		IIC1_Ack();
+    118          
+    119          	return receive;
+    120          }
+    121          
+
+   Maximum stack usage in bytes:
+
+   .cstack Function
+   ------- --------
+       8   IIC1_Ack
+         0   -> GPIO_WriteBit
+         8   -> GPIO_WriteBit
+         8   -> IIC_delay_us
+       8   IIC1_NAck
+         0   -> GPIO_WriteBit
+         8   -> GPIO_WriteBit
+         8   -> IIC_delay_us
+      24   IIC1_Read_Byte
+        24   -> GPIO_ReadInputDataBit
+        24   -> GPIO_WriteBit
+        24   -> IIC1_Ack
+        24   -> IIC1_NAck
+      16   IIC1_Send_Byte
+        16   -> GPIO_WriteBit
+       8   IIC1_Start
+         0   -> GPIO_WriteBit
+         8   -> GPIO_WriteBit
+         8   -> IIC_delay_us
+       8   IIC1_Stop
+         8   -> GPIO_WriteBit
+         0   -> IIC_delay_us
+         8   -> IIC_delay_us
+      16   IIC1_Wait_Ack
+        16   -> GPIO_ReadInputDataBit
+        16   -> GPIO_WriteBit
+        16   -> IIC1_Stop
+        16   -> IIC_delay_us
+       0   IIC_delay_us
+
+
+   Section sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       4  ??DataTable7
+      60  IIC1_Ack
+      60  IIC1_NAck
+      72  IIC1_Read_Byte
+      62  IIC1_Send_Byte
+      60  IIC1_Start
+      58  IIC1_Stop
+      82  IIC1_Wait_Ack
+      16  IIC_delay_us
+
+ 
+ 474 bytes in section .text
+ 
+ 474 bytes of CODE memory
+
+Errors: none
+Warnings: none

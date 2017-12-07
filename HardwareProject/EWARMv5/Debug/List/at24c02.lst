@@ -1,0 +1,216 @@
+###############################################################################
+#
+# IAR ANSI C/C++ Compiler V8.20.1.14183/W32 for ARM       07/Dec/2017  15:20:34
+# Copyright 1999-2017 IAR Systems AB.
+#
+#    Cpu mode     =  thumb
+#    Endian       =  little
+#    Source file  =  
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\at24c02.c
+#    Command line =  
+#        -f C:\Users\DELL\AppData\Local\Temp\EWC018.tmp
+#        (C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\at24c02.c -D
+#        VECT_TAB_FLASH -lcN
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\Debug\List
+#        -o
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\Debug\Obj
+#        --debug --endian=little --cpu=Cortex-M3 -e --fpu=None --dlib_config
+#        "C:\Program Files (x86)\IAR Systems\Embedded Workbench
+#        8.0_2\arm\INC\c\DLib_Config_Full.h" -I
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\..\ -I
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\..\..\ -I
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\..\..\FWLib\library\inc\
+#        -Ohs --use_c++_inline --require_prototypes)
+#    Locale       =  C
+#    List file    =  
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\Debug\List\at24c02.lst
+#    Object file  =  
+#        C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\EWARMv5\Debug\Obj\at24c02.o
+#
+###############################################################################
+
+C:\Users\DELL\Documents\CoretexSource\Source\DAC_1\at24c02.c
+      1          #include "stm32f10x_lib.h"
+      2          #include "iic.h"
+      3          #include "at24c02.h"
+      4          
+      5          
+      6          void AT24CXX_Write_Delay(void);
+      7          
+      8          
+      9          void at24c02_gpio_init() 
+     10          {
+     11          	GPIO_InitTypeDef GPIO_InitStructure;	
+     12          	
+     13          	//SCL
+     14          	GPIO_InitStructure.GPIO_Pin = IIC1_SCL_PIN;  
+     15          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+     16          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP; 
+     17          	GPIO_Init(IIC1_SCL_PORT, &GPIO_InitStructure);                                 
+     18          
+     19          	//SDA
+     20          	GPIO_InitStructure.GPIO_Pin = IIC1_SDA_PIN;  
+     21          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+     22          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD; 
+     23          	GPIO_Init(IIC1_SDA_PORT, &GPIO_InitStructure); 
+     24          }
+     25          
+     26          
+     27          void AT24CXX_Write_Delay(void)
+     28          {
+     29          	u16 i;
+     30          	for(i=0;i<45000;i++);
+     31          }
+     32          
+     33          void AT24CXX_Init(void)
+     34          {
+     35          	at24c02_gpio_init();
+     36          }
+     37          
+     38          u8 AT24CXX_ReadOneByte(u16 ReadAddr)
+     39          {
+     40          	u8 temp = 0;
+     41          
+     42          	IIC1_Start();
+     43          
+     44          
+     45          	IIC1_Send_Byte(0xA0);   
+     46          
+     47          
+     48          	IIC1_Wait_Ack();
+     49          	IIC1_Send_Byte(ReadAddr%256);
+     50          	IIC1_Wait_Ack();
+     51          	IIC1_Start();
+     52          	IIC1_Send_Byte(0xA1);
+     53          	IIC1_Wait_Ack();
+     54          	temp = IIC1_Read_Byte(0);
+     55          	IIC1_Stop();
+     56          
+     57          	return temp;
+     58          }
+     59          
+     60          void AT24CXX_WriteOneByte(u16 WriteAddr,u8 DataToWrite)
+     61          {
+     62          	IIC1_Start();
+     63          
+     64          	IIC1_Send_Byte(0xA0);
+     65          
+     66          	IIC1_Wait_Ack();
+     67          	IIC1_Send_Byte(WriteAddr%256);
+     68          	IIC1_Wait_Ack();
+     69          	IIC1_Send_Byte(DataToWrite);
+     70          	IIC1_Wait_Ack();
+     71          	IIC1_Stop();
+     72          	AT24CXX_Write_Delay();
+     73           
+     74          }
+     75          
+     76          void AT24CXX_WriteLenByte(u16 WriteAddr,u32 DataToWrite,u8 Len)
+     77          {
+     78          	u8 t;
+     79          	for(t=0;t<Len;t++)
+     80          	{
+     81          		AT24CXX_WriteOneByte(WriteAddr+t,(DataToWrite>>(8*t))&0xff);
+     82          	}
+     83          }
+     84          
+     85          u32 AT24CXX_ReadLenByte(u16 ReadAddr,u8 Len)
+     86          {
+     87          	u8 t;
+     88          	u32 temp = 0;
+     89          
+     90          	for(t=0;t<Len;t++)
+     91          	{
+     92          		temp<<=8;
+     93          		temp+=AT24CXX_ReadOneByte(ReadAddr+Len-t-1);
+     94          	}
+     95          
+     96          	return temp;
+     97          }
+     98          
+     99          void AT24CXX_Read(u16 ReadAddr,u8 *pBuffer,u16 NumToRead)
+    100          {
+    101          	while(NumToRead)
+    102          	{
+    103          		*pBuffer++=AT24CXX_ReadOneByte(ReadAddr++);
+    104          		NumToRead--;
+    105          	}
+    106          }
+    107          
+    108          void AT24CXX_Write(u16 WriteAddr,u8 *pBuffer,u16 NumToWrite)
+    109          {
+    110          	while(NumToWrite--)
+    111          	{
+    112          		AT24CXX_WriteOneByte(WriteAddr,*pBuffer);
+    113          		WriteAddr++;
+    114          		pBuffer++;
+    115          	}
+    116          }
+    117          
+
+   Maximum stack usage in bytes:
+
+   .cstack Function
+   ------- --------
+      16   AT24CXX_Init
+        16   -> GPIO_Init
+      24   AT24CXX_Read
+        24   -> IIC1_Read_Byte
+        24   -> IIC1_Send_Byte
+        24   -> IIC1_Start
+        24   -> IIC1_Stop
+        24   -> IIC1_Wait_Ack
+      24   AT24CXX_ReadLenByte
+        24   -> IIC1_Read_Byte
+        24   -> IIC1_Send_Byte
+        24   -> IIC1_Start
+        24   -> IIC1_Stop
+        24   -> IIC1_Wait_Ack
+       8   AT24CXX_ReadOneByte
+         8   -> IIC1_Read_Byte
+         8   -> IIC1_Send_Byte
+         8   -> IIC1_Start
+         8   -> IIC1_Stop
+         8   -> IIC1_Wait_Ack
+      24   AT24CXX_Write
+        24   -> IIC1_Send_Byte
+        24   -> IIC1_Start
+        24   -> IIC1_Stop
+        24   -> IIC1_Wait_Ack
+      24   AT24CXX_WriteLenByte
+        24   -> IIC1_Send_Byte
+        24   -> IIC1_Start
+        24   -> IIC1_Stop
+        24   -> IIC1_Wait_Ack
+      16   AT24CXX_WriteOneByte
+        16   -> IIC1_Send_Byte
+        16   -> IIC1_Start
+         0   -> IIC1_Stop
+        16   -> IIC1_Wait_Ack
+       0   AT24CXX_Write_Delay
+      16   at24c02_gpio_init
+        16   -> GPIO_Init
+
+
+   Section sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       4  ??DataTable1
+      62  AT24CXX_Init
+      76  AT24CXX_Read
+      92  AT24CXX_ReadLenByte
+      58  AT24CXX_ReadOneByte
+      66  AT24CXX_Write
+      72  AT24CXX_WriteLenByte
+      52  AT24CXX_WriteOneByte
+       2  AT24CXX_Write_Delay
+      62  at24c02_gpio_init
+
+ 
+ 546 bytes in section .text
+ 
+ 546 bytes of CODE memory
+
+Errors: none
+Warnings: none
