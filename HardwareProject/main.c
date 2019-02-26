@@ -160,7 +160,7 @@ void main(void)
                 if(!GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_1) && flag){
                     Servo_R90();
                     
-                    delay_ms(5000 * count);
+                    delay_ms(3600 * 1000 * count);
                     flag = 0;
                     Servo_90();
                     count = 1;
